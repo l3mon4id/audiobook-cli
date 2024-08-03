@@ -51,3 +51,28 @@ def merge(
         Console().print(f"Would execute: {' '.join(command)}")
     else:
         subprocess.run(command)
+
+
+@app.command(
+    name="add-meta",
+    help="Adds previously generated metadata file via ffmpeg to an m4b audiobook file.",
+)
+def add_meta(
+    audiobook: str = typer.Option(..., "--audiobook", "-a", help="Path to audiobook."),
+    meta: str = typer.Option(..., "--meta", "-m", help="Path to ffmpeg metadata file."),
+    output: str = typer.Option(..., "--output", "-o", help="Path to output file."),
+):
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-i",
+            audiobook,
+            "-i",
+            meta,
+            "-map_metadata",
+            "1",
+            "-codec",
+            "copy",
+            output,
+        ]
+    )

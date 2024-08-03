@@ -110,6 +110,7 @@ def audible_chapters(
 def metadata(
     ctx: typer.Context,
     raw: bool = typer.Option(False, "--raw", "-r", help="Raw data output."),
+    output: str = typer.Option(None, "--output", "-o", help="Optional output file."),
     asin: str = typer.Argument(..., help="ASIN of the book to fetch metadata for."),
 ):
     config = ctx.obj
@@ -131,6 +132,7 @@ def metadata(
     if raw:
         c.print_json(data=data)
     else:
+        metadata = ""
         prod = data["product"]
         title = prod["title"]
         artist = ", ".join(author["name"] for author in prod["authors"])
@@ -143,30 +145,35 @@ def metadata(
         copy = prod["copyright"]
         publisher = prod["publisher_name"]
         language = prod["language"].capitalize()
-        c.print(";FFMETADATA1")
-        c.print("major_brand=isom")
-        c.print("minor_version=512")
-        c.print(f"title={title}")
-        c.print(f"artist={artist}")
-        c.print(f"album_artist={artist}")
-        c.print(f"album={album}")
-        c.print(f"comment={comment}")
-        c.print(f"copyright={copy}")
-        c.print(f"data={prod['release_date']}")
-        c.print(f"composer={composer}")
-        c.print(f"SUBTITLE={subtitle}")
-        c.print(f"PUBLISHER={publisher}")
-        c.print(f"LANGUAGE={language}")
-        c.print(f"AUDIBLE_ASIN={asin}")
-        c.print(f"asin={asin}")
-        c.print(f"SERIES={series}")
-        c.print(f"PART={part}\n")
+        metadata += ";FFMETADATA1\n"
+        metadata += "major_brand=isom\n"
+        metadata += "minor_version=512\n"
+        metadata += f"title={title}\n"
+        metadata += f"artist={artist}\n"
+        metadata += f"album_artist={artist}\n"
+        metadata += f"album={album}\n"
+        metadata += f"comment={comment}\n"
+        metadata += f"copyright={copy}\n"
+        metadata += f"data={prod['release_date']}\n"
+        metadata += f"composer={composer}\n"
+        metadata += f"SUBTITLE={subtitle}\n"
+        metadata += f"PUBLISHER={publisher}\n"
+        metadata += f"LANGUAGE={language}\n"
+        metadata += f"AUDIBLE_ASIN={asin}\n"
+        metadata += f"asin={asin}\n"
+        metadata += f"SERIES={series}\n"
+        metadata += f"PART={part}\n\n"
         for chapter in data_chapters["content_metadata"]["chapter_info"]["chapters"]:
             begin = chapter["start_offset_ms"]
             end = begin + chapter["length_ms"]
             title = chapter["title"]
-            c.print("[CHAPTER]")
-            c.print("TIMEBASE=1/1000")
-            c.print(f"START={begin}")
-            c.print(f"END={end}")
-            c.print(f"title={title}\n")
+            metadata += "[CHAPTER]\n"
+            metadata += "TIMEBASE=1/1000\n"
+            metadata += f"START={begin}\n"
+            metadata += f"END={end}\n"
+            metadata += f"title={title}\n\n"
+        if output:
+            with open(output, "w") as fh:
+                fh.write(metadata)
+        else:
+            c.print(metadata)
