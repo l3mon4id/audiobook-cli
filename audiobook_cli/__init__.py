@@ -189,3 +189,32 @@ def get_path(
     except KeyError as ke:
         c.print(f"[red]Missing metadata {ke}")
         raise typer.Exit(-1)
+
+
+@app.command(name="trim", help="Removed non-standard metadata from m4b files.")
+def trim(
+    remove: bool = typer.Option(
+        False, "--remove", "-r", help="Remove the original file after copying the data."
+    ),
+    file: str = typer.Argument(..., help="File to remove metadata from."),
+):
+    c = Console()
+    tmp = f".tmp-{file}"
+    c.print(f"Moving file {file}.")
+    rename(file, tmp)
+    c.print("Create file copy with trimmed metadata.")
+    command = [
+        ffmpeg(),
+        "-i",
+        tmp,
+        "-movflags",
+        "use_metadata_tags",
+        "-map_metadata",
+        "0",
+        "-c",
+        "copy",
+        file,
+    ]
+    subprocess.run(command, capture_output=True, text=True)
+    if remove:
+        c.print(f"Removing {tmp}")
