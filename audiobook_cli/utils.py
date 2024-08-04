@@ -29,3 +29,15 @@ def get_audible_auth_from_file(
         locale=locale,
         encryption="bytes" if password else None,
     )
+
+
+def ffmpeg():
+    if "windows" in platform:
+        return "ffmpeg.exe"
+    return "ffmpeg"
+
+
+def ffprobe():
+    if "windows" in platform:
+        return "ffprobe.exe"
+    return "ffprobe"

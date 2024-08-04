@@ -1,4 +1,5 @@
 from os.path import exists as p_exists
+from sys import stderr
 
 import audible
 import typer
@@ -81,6 +82,9 @@ def audible_chapters(
     asin: str = typer.Argument(..., help="Audible book ASIN."),
     raw: bool = typer.Option(False, "--raw", "-r", help="Raw output."),
 ):
+    Console(stderr=True).print(
+        "This command is deprecated - please use the metadata command."
+    )
     config = ctx.obj
     auth = get_audible_auth_from_file(
         locale=config["locale"], password=config["encryption"]
@@ -111,6 +115,24 @@ def metadata(
     ctx: typer.Context,
     raw: bool = typer.Option(False, "--raw", "-r", help="Raw data output."),
     output: str = typer.Option(None, "--output", "-o", help="Optional output file."),
+    skip_chapters: bool = typer.Option(
+        False,
+        "--skip-chapters",
+        "-s",
+        help="Skip pulling chapter metadata from Audible.",
+    ),
+    chapter_offset: int = typer.Option(
+        None,
+        "--chapter-offset",
+        "-c",
+        help='Chapter offset in milliseconds to skip a given intro that differs from the usual audible chapter data. This adds an "Intro" chapter to the beginning of the book.',
+    ),
+    chapter_intro_name: str = typer.Option(
+        "Intro",
+        "--chapter-intro-name",
+        "-C",
+        help='Customized name, if not given, "Intro" will be used.',
+    ),
     asin: str = typer.Argument(..., help="ASIN of the book to fetch metadata for."),
 ):
     config = ctx.obj
@@ -122,11 +144,12 @@ def metadata(
             f"1.0/catalog/products/{asin}",
             response_groups="product_attrs, product_desc, product_details, product_extended_attrs, product_plan_details, product_plans, series, contributors",
         )
-        data_chapters = client.get(
-            f"1.0/content/{asin}/metadata",
-            response_groups="chapter_info",
-            chapter_titles_type="Flat",
-        )
+        if not skip_chapters or chapter_offset:
+            data_chapters = client.get(
+                f"1.0/content/{asin}/metadata",
+                response_groups="chapter_info",
+                chapter_titles_type="Flat",
+            )
 
     c = Console()
     if raw:
@@ -163,15 +186,27 @@ def metadata(
         metadata += f"asin={asin}\n"
         metadata += f"SERIES={series}\n"
         metadata += f"PART={part}\n\n"
-        for chapter in data_chapters["content_metadata"]["chapter_info"]["chapters"]:
-            begin = chapter["start_offset_ms"]
-            end = begin + chapter["length_ms"]
-            title = chapter["title"]
-            metadata += "[CHAPTER]\n"
-            metadata += "TIMEBASE=1/1000\n"
-            metadata += f"START={begin}\n"
-            metadata += f"END={end}\n"
-            metadata += f"title={title}\n\n"
+        if not skip_chapters or chapter_offset:
+            if chapter_offset:
+                metadata += "[CHAPTER]\n"
+                metadata += "TIMEBASE=1/1000\n"
+                metadata += "START=0\n"
+                metadata += f"END={chapter_offset}\n"
+                metadata += f"title={chapter_intro_name}\n\n"
+            for chapter in data_chapters["content_metadata"]["chapter_info"][
+                "chapters"
+            ]:
+                begin = chapter["start_offset_ms"]
+                end = begin + chapter["length_ms"]
+                if chapter_offset:
+                    begin += chapter_offset
+                    end += chapter_offset
+                title = chapter["title"]
+                metadata += "[CHAPTER]\n"
+                metadata += "TIMEBASE=1/1000\n"
+                metadata += f"START={begin}\n"
+                metadata += f"END={end}\n"
+                metadata += f"title={title}\n\n"
         if output:
             with open(output, "w") as fh:
                 fh.write(metadata)
