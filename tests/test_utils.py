@@ -3,7 +3,7 @@ from audiobook_cli.utils import path_from_metadata
 
 metadata = {
     "title": "The Book of Tests",
-    "author": "Some nice stranger",
+    "artist": "Some nice stranger",
     "series": "Programming for Dummies",
     "part": "42",
     "subtitle": "Programming for Dummies 42",
