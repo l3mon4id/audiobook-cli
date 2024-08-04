@@ -1,8 +1,7 @@
-from datetime import time
 import logging
 import subprocess
 from glob import glob
-from os import rename, times
+from os import rename
 import typer
 from rich.console import Console
 from rich.logging import RichHandler

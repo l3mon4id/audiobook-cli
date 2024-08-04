@@ -2,8 +2,8 @@ from os import getenv
 from os.path import expanduser
 from os.path import join as p_join
 from sys import platform
+
 from audible.auth import Authenticator
-from httpx import Auth
 
 
 def config_path() -> str:

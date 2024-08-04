@@ -1,5 +1,4 @@
 from os.path import exists as p_exists
-from sys import stderr
 
 import audible
 import typer
