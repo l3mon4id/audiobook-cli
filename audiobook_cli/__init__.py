@@ -1,14 +1,22 @@
 import logging
+from re import sub
 import subprocess
 from glob import glob
 from os import rename
+from typing import List
+
 import typer
 from rich.console import Console
 from rich.logging import RichHandler
 from typer import Typer
 
 from audiobook_cli.audible import app as audible_app
-from audiobook_cli.utils import ffmpeg, ffprobe
+from audiobook_cli.utils import (
+    ffmpeg,
+    ffprobe,
+    get_metadata_from_file,
+    path_from_metadata,
+)
 
 app = Typer(name="audiobook-cli", help="Audiobook python CLI")
 app.add_typer(audible_app)
@@ -91,6 +99,8 @@ def merge(
                     "chapters.txt",
                     "-map_metadata",
                     "1",
+                    "-movflags",
+                    "use_metadata_tags",
                     "-codec",
                     "copy",
                     output,
@@ -121,8 +131,61 @@ def add_meta(
             meta,
             "-map_metadata",
             "1",
+            "-movflags",
+            "use_metadata_tags",
             "-codec",
             "copy",
             output,
         ]
     )
+
+
+@app.command(
+    name="get-meta",
+    help="Displays typical audiobook metadata information extracted via ffprobe.",
+)
+def get_meta(
+    files: List[str] = typer.Argument(..., help="One or multiple audiobook files."),
+):
+    c = Console()
+    for file in files:
+        c.print(f"{file}")
+        for k, v in get_metadata_from_file(file).items():
+            c.print(f"  {k.capitalize()}: {v}")
+
+
+@app.command(
+    name="get-path", help="Creates and displays a filepath based on audiobook metadata."
+)
+def get_path(
+    include_filename: bool = typer.Option(
+        False, "--include-filename", "-f", help="Include filename in the path."
+    ),
+    series_subdir: bool = typer.Option(
+        False,
+        "--series-subdir",
+        "-s",
+        help="Creates multiple subdirs for series and series part.",
+    ),
+    series_from_subtitle: bool = typer.Option(
+        False,
+        "--series-from-subtitle",
+        "-S",
+        help="Use subtitle metadata in case series/part metadata is missing.",
+    ),
+    file: str = typer.Argument(..., help="File to create a filepath for."),
+):
+    c = Console()
+    try:
+        metadata = get_metadata_from_file(file)
+        c.print(
+            path_from_metadata(
+                metadata,
+                include_filename=include_filename,
+                series_subdir=series_subdir,
+                use_subtitle_as_series=series_from_subtitle,
+            )
+        )
+    except KeyError as ke:
+        c.print(f"[red]Missing metadata {ke}")
+        raise typer.Exit(-1)
